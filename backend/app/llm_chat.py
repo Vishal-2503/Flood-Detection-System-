@@ -1,33 +1,33 @@
-import google.generativeai as genai
 import os
+from groq import Groq # pyright: ignore[reportMissingImports]
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-# ✅ Stable model for v1beta
-model = genai.GenerativeModel("models/gemini-pro")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def llm_response(question, flood_risk, lat, lng):
-    try:
-        prompt = f"""
-You are an intelligent flood risk assistant.
+    prompt = f"""
+You are a flood risk assistant.
 
 Location:
 Latitude: {lat}
 Longitude: {lng}
 
-Predicted Flood Risk: {flood_risk}
+Flood Risk Level: {flood_risk}
 
 User Question:
 {question}
 
-Explain clearly and give safety advice if relevant.
+Explain clearly and give safety advice if needed.
 """
 
-        response = model.generate_content(prompt)
-        return response.text
+    chat_completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {"role": "system", "content": "You are a helpful flood risk assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    )
 
-    except Exception as e:
-        return f"LLM error occurred: {str(e)}"
+    return chat_completion.choices[0].message.content

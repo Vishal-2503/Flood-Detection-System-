@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from app.flood_logic import predict_flood_risk
 from fastapi.middleware.cors import CORSMiddleware
+from app.soil_moisture import get_smap_soil_moisture
+from app.thingsboard import push_soil_moisture_to_tb
 
 app = FastAPI()
 
@@ -47,3 +49,15 @@ def chat_bot(query: ChatQuery):
     )
 
     return {"answer": answer}
+
+@app.post("/soil-moisture")
+def soil_moisture(location: Location):
+    data = get_smap_soil_moisture(location.latitude, location.longitude)
+    push_soil_moisture_to_tb(data)
+
+    return {
+        "latitude": location.latitude,
+        "longitude": location.longitude,
+        "soil_moisture": data["soil_moisture"],
+        "status": data["status"]
+    }
