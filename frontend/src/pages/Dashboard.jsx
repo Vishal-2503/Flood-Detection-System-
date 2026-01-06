@@ -9,41 +9,44 @@ export default function Dashboard({ setSoilHistory }) {
   const [lng, setLng] = useState(null);
   const [risk, setRisk] = useState(null);
   const [soil, setSoil] = useState(null);
-  const [clickCount, setClickCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  // 📍 When user selects location from map
   const handleLocationSelect = async (latitude, longitude) => {
     setLat(latitude);
     setLng(longitude);
     setRisk(null);
     setSoil(null);
-    setClickCount(0);
+    setSoilHistory([]); // reset history for new location
 
     const response = await predictFlood(latitude, longitude);
     setRisk(response.flood_risk);
-
-    setSoilHistory([]); // reset history on new location
   };
 
+  // 🌱 Fetch SMAP soil moisture and go to chart
   const handleSoilMoisture = async () => {
+    if (!lat || !lng) return;
+
+    setLoading(true);
+
     const data = await getSoilMoisture(lat, lng);
     setSoil(data);
 
-    setSoilHistory(prev => [
+    // Store with date → yearly / time-series graph
+    setSoilHistory((prev) => [
       ...prev,
       {
+        date: new Date().toISOString().split("T")[0], // YYYY-MM-DD
         value: data.soil_moisture,
-        time: new Date().toLocaleTimeString()
-      }
+      },
     ]);
 
-    setClickCount(prev => prev + 1);
+    setLoading(false);
 
-    // SECOND CLICK → NAVIGATE
-    if (clickCount + 1 === 2) {
-      navigate("/soil-chart");
-    }
+    // 👉 Navigate to graph page
+    navigate("/soil-chart");
   };
 
   return (
@@ -52,18 +55,27 @@ export default function Dashboard({ setSoilHistory }) {
 
       <MapView onLocationSelect={handleLocationSelect} />
 
-      {risk && <p><b>Flood Risk:</b> {risk}</p>}
+      {risk && (
+        <p>
+          <b>Flood Risk:</b> {risk}
+        </p>
+      )}
 
       {lat && lng && (
-        <button onClick={handleSoilMoisture}>
-          🌱 Show Soil Moisture
+        <button onClick={handleSoilMoisture} disabled={loading}>
+          {loading ? "Fetching Soil Moisture..." : "🌱 View Soil Moisture Graph"}
         </button>
       )}
 
       {soil && (
         <div>
-          <p><b>Soil Moisture:</b> {soil.soil_moisture} m³/m³</p>
-          <p><b>Status:</b> {soil.status}</p>
+          <p>
+            <b>Latest Soil Moisture:</b>{" "}
+            {soil.soil_moisture} m³/m³
+          </p>
+          <p>
+            <b>Status:</b> {soil.status}
+          </p>
         </div>
       )}
 
